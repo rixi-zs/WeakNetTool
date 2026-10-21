@@ -1,0 +1,44 @@
+# Generated build output and local review artifacts
+/build/
+/.review_tmp/
+
+# Historical snapshots and packaged releases are retained on disk.
+/backup/
+/release/
+/新建文件夹/
+/新建文件夹.zip
+
+# Independently assembled source-only public snapshot.
+/public_source/
+
+# SDK copies fetched for local builds; the public source snapshot keeps only
+# reviewed WinDivert license/readme/version text.
+/windivert/
+/WinDivert-2.2.2-A/include/
+/WinDivert-2.2.2-A/x64/
+/WinDivert-2.2.2-A/x86/
+/WinDivert-2.2.2-A/doc/
+/WinDivert-2.2.2-A/CHANGELOG
+
+# Local configuration, diagnostics, credentials, and signing material.
+/WeakNetTool.ini
+*.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Build outputs, including builds made outside /build/.
+/CMakeFiles/
+/CMakeCache.txt
+/Testing/
+*.obj
+*.pdb
+*.ilk
+*.exe
+*.dll
+*.sys
+*.lib
