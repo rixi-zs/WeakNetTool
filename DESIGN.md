@@ -6,7 +6,7 @@
 > 本文件也是历史工程记录：每条修复的根因、验证方式都留在下面，便于日后维护。
 
 一个基于 **WinDivert** 的弱网测试工具：把指定端口（或**指定进程**）的下行/上行数据包
-在内核里直接丢弃，形成 **100% 丢包的黑洞**，用于验证程序的超时、重试、断线重连、降级等弱网逻辑。
+由 WinDivert 截获并在用户态决定不回注，形成所选过滤范围内的 **100% 丢包黑洞**，用于验证程序的超时、重试、断线重连、降级等弱网逻辑。
 
 同时提供**命令行版**和**图形界面版**，两者共用同一份丢包引擎：
 
@@ -16,9 +16,9 @@
 | `WeakNetToolGUI.exe` | 手动调试，双击即用，可视化选参数并实时预览过滤器 |
 
 - 语言：C++11
-- 依赖：[WinDivert](https://www.reqrypt.org/windivert.html) 2.2.2
-- 构建：CMake（MSVC / MinGW 均可）
-- 发布包：`make_release.bat` 一键产出 `release\WeakNetTool-<版本>-win64\`（含 zip）
+- 依赖：[WinDivert](https://github.com/basil00/WinDivert/releases/tag/v2.2.2) 2.2.2
+- 构建：CMake；当前源码版按 MSVC x64 / Ninja 构建验证
+- 二进制打包脚本：`make_release.bat` 可产出 `release\WeakNetTool-<版本>-win64\`，但其预编译 WinDivert 依赖尚未通过来源与哈希核验，不能作为本次公开源码包
 - 三种"丢什么"的目标：**按端口**（`--port 8080`）、**整体断网**（`--port all`）、
   **按进程名选择性丢包**（`--process chrome.exe`，v1.2.0 新增）
 
@@ -46,14 +46,14 @@ WinDivert 是一个内核态 WFP/WDF 驱动 + 用户态库的组合。当你用 
 
 **本工具的核心就是最后一行**：`WinDivertRecv()` 收到包之后什么都不做，
 于是这个包既不会交给本机协议栈，也不会被转发出去 —— 目标进程根本感知不到它存在过。
-丢包发生在内核里，不受应用层重试、代理、连接池的影响，所以是真正的物理级 100% 丢包。
+过滤器命中的报文由 WinDivert 截获；配置为 100% 丢包时，本工具不回注这些报文。是否命中及应用最终表现取决于过滤范围和协议行为，需实机验证。
 
 ---
 
 ## 2. 文件结构
 
 ```
-弱网工具/
+WeakNetTool/
 ├── src/
 │   ├── weaknet_core.h        # 共用引擎接口（配置、过滤器、会话、统计、进程<->端口映射）
 │   ├── weaknet_core.cpp      # 共用引擎实现：WinDivert 收包丢弃/放行 + 优雅停止（CLI/GUI 同一份）
@@ -63,27 +63,25 @@ WinDivert 是一个内核态 WFP/WDF 驱动 + 用户态库的组合。当你用 
 ├── build.bat                 # 一键构建（自动找 VS、导入 x64 环境、编译；会校验构建结果）
 ├── make_release.bat          # 一键出发布包（调用 make_release.ps1）
 ├── make_release.ps1          # 组装 release/<包名>/ 并压缩成 zip，打印 SHA256
-├── README.md                 # 本文件
+├── DESIGN.md                 # 本文件
+├── README.md                 # 使用与源码构建说明
 ├── RELEASE_NOTES.md          # 发布说明
-├── windivert/                # ← 需要你放入 WinDivert（见第 3 节）；目录名也可以是 WinDivert-2.2.2-A
-│   ├── include/windivert.h
-│   ├── x64/{WinDivert.lib, WinDivert.dll, WinDivert64.sys}
-│   └── x86/{WinDivert.lib, WinDivert.dll, WinDivert32.sys}
+├── LICENSE                   # WeakNetTool 自身的 MIT 许可证
+├── THIRD_PARTY_NOTICES.md   # WinDivert 单独许可说明
+├── WinDivert-2.2.2-A/        # 仅含上游许可与说明，不是完整 SDK
+├── tests/                    # 核心与 GUI 设置测试
 ├── build/                    # 构建输出
 │   ├── WeakNetTool.exe       # 命令行版
 │   ├── WeakNetToolGUI.exe    # 图形界面版
 │   ├── WinDivert.dll         # 由 CMake 自动拷贝
 │   └── WinDivert64.sys       # 由 CMake 自动拷贝
-└── release/                  # make_release.bat 的产物
-    ├── WeakNetTool-1.2.0-win64/     # 可整目录拷走的绿色版
-    └── WeakNetTool-1.2.0-win64.zip
+└── release/                  # 本地打包输出，不纳入源码版仓库
 ```
 
 > 命令行版和图形界面版**共用同一份引擎**（`weaknet_core.cpp`）。GUI 不是另写一套丢包逻辑，
-> 所以命令行版验证过的行为（含下面 5.4 提到的"关句柄唤醒阻塞 recv"）对 GUI 同样成立。
+> 两者共享引擎实现；CLI 验证不能代替 GUI 消息、配置和 ETW 的独立验证。
 >
-> 本工程也兼容官方发行包解压后的原始目录名。如果你的目录叫 `WinDivert-2.2.2-A`，
-> CMake 会自动识别，**不必改名**；想改成 `windivert/` 也可以，两者都支持。
+> 本源码仓库内的 `WinDivert-2.2.2-A/` 只有许可材料，不能用于构建。请在仓库外解压官方 SDK 并设置 `WINDIVERT_ROOT`。CMake 也支持完整的根目录 `windivert/` 或 `WinDivert-*/` SDK，但不要把预编译文件加入源码仓库。
 
 ---
 
@@ -91,26 +89,17 @@ WinDivert 是一个内核态 WFP/WDF 驱动 + 用户态库的组合。当你用 
 
 ### 3.1 去哪里下载
 
-官方地址：**<https://www.reqrypt.org/windivert.html>**（REQRYPT 官方站点）
-
-在页面 **Download** 一节下载二进制包（写本文时最新为 2.2.2）：
-
-- 二进制包（推荐，含预编译 DLL/LIB/SYS）：`https://www.reqrypt.org/download/WinDivert-2.2.2-A.zip`
-- 源码包：`https://www.reqrypt.org/download/WinDivert-2.2.2-Source.zip`
-- 源码仓库（GitHub）：<https://github.com/basil00/Divert>
-
-> A / B / C 三个变体只有**驱动签名**不同，功能完全一致，随便选一个即可。
+从 [WinDivert 官方 v2.2.2 发行页](https://github.com/basil00/WinDivert/releases/tag/v2.2.2) 获取 `WinDivert-2.2.2-A.zip`，自行核对来源。WinDivert 使用独立的 LGPL v3 许可选项，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。本仓库不提供已核验的预编译 SDK。
 
 ### 3.2 编译期：头文件和导入库放哪里
 
-解压 `WinDivert-2.2.2-A.zip`，把整个目录放到工程根目录并改名为 `windivert`：
+将 SDK 解压到工程目录之外，例如 `D:/sdk/WinDivert-2.2.2-A`：
 
 ```
-<工程根目录>/windivert/include/windivert.h        ← 头文件（编译需要）
-<工程根目录>/windivert/x64/WinDivert.lib          ← 导入库（链接需要，x64）
-<工程根目录>/windivert/x64/WinDivert.dll          ← 运行期需要
-<工程根目录>/windivert/x64/WinDivert64.sys        ← 运行期需要
-<工程根目录>/windivert/x86/...                    ← 32 位构建时使用
+D:/sdk/WinDivert-2.2.2-A/include/windivert.h
+D:/sdk/WinDivert-2.2.2-A/x64/WinDivert.lib
+D:/sdk/WinDivert-2.2.2-A/x64/WinDivert.dll
+D:/sdk/WinDivert-2.2.2-A/x64/WinDivert64.sys
 ```
 
 CMake 会按 **目标架构**自动选择 `x64/` 或 `x86/` 子目录。
@@ -136,8 +125,8 @@ cmake -S . -B build -DWINDIVERT_ROOT="D:/sdk/WinDivert-2.2.2-A"
 WinDivert 的驱动**不需要手工安装**：程序调用 `WinDivertOpen()` 时会自动、静默地
 安装并加载驱动（所以必须管理员权限）；程序退出后驱动会卸载，删除这两个文件即完成"卸载"。
 
-本工程的 `CMakeLists.txt` 已经配置了 **构建后自动拷贝**，所以 `build/` 目录里
-天然就有这两个文件，直接整目录拷到测试机就能用：
+本工程的 `CMakeLists.txt` 配置了构建后拷贝，`build/` 目录中会有这些运行期文件。
+这是脚本行为说明，不表示预编译依赖已经通过公开再分发审核：
 
 ```cmake
 add_custom_command(TARGET WeakNetTool POST_BUILD
@@ -185,7 +174,7 @@ VS 2019/2022 可以直接"打开文件夹"载入本工程（VS 内置 CMake 支�
 `requireAdministrator` 清单，双击时自动弹 UAC 提权（默认关闭，以便程序自身的权限自检生效）。
 **图形界面版** 则一律嵌入该清单（双击即提权，体验最好）。
 
-### 打包发布
+### 历史二进制打包脚本（本次源码版不运行）
 
 ```bat
 make_release.bat
@@ -201,10 +190,6 @@ make_release.bat
 > （检查 `cmake --build` 返回码 + 扫描 `FAILED:`/`fatal error`/`error LNK` + 确认产物存在），
 > 这一点很实用：某些 CMake 版本在 ninja 失败时仍返回 0，实测曾出现
 > "exe 被占用导致链接失败 LNK1104、脚本却打印 [DONE]"的假成功。
-
-### 方式四：快速试用（不编译）
-
-直接运行 `release\WeakNetTool-1.0.0-win64\` 里的程序即可（已经是静态链接运行库的绿色包）。
 
 ---
 
@@ -425,8 +410,7 @@ WeakNetTool.exe --process chrome.exe --loss-up 30 --loss-down 0
 
 ### 5.1.4 限速：上行 / 下行分别限速（v1.5.0 新增，v1.6.0 支持 B/s 与延迟上限）
 
-**这是真正的整形（shaping），不是丢包。** 超速的报文会被**排队等一会儿再放行**，
-不丢包也能把速率压下来。
+限速使用整形（shaping）：超速报文通常排队后回注；队列满、等待超时或发送失败时仍可能丢包。
 
 ```bat
 :: 上行限 200KB/s，下行限 1024KB/s
@@ -460,7 +444,7 @@ WeakNetTool.exe --port all --dir both --rate-up 200K --loss-up 5
 | | 丢包率 | 限速 |
 |---|---|---|
 | 手段 | 随机扔掉一些包 | 超速的包排队等一会儿再发 |
-| 实际吞吐 | **不可预测**（取决于 TCP 拥塞控制、RTT、连接数） | **可预测**，就是设定的上限 |
+| 实际吞吐 | 取决于 TCP 拥塞控制、RTT、连接数 | 设定值是目标上限；实际吞吐取决于负载、队列和协议行为 |
 | 通过的包 | 全速通过，突发性保留 | 被熨平成匀速 |
 | 体感 | **卡顿**：花屏、断续、瞬移 | **变慢但连续**：视频降码率但仍能播 |
 
@@ -473,7 +457,7 @@ WeakNetTool.exe --port all --dir both --rate-up 200K --loss-up 5
 
 | 丢包率 | 限速 | 效果 |
 |---|---|---|
-| **0** | **>0** | ✅ **纯限速**：接管但不丢包，只排队（**最常用**） |
+| **0** | **>0** | **只设限速**：正常排队；队列限制或故障仍可能导致丢包 |
 | 1~99 | >0 | 叠加：先按概率丢，活下来的再排队限速 |
 | 1~99 | 0 | 只按概率丢包 |
 | 100 | 0 | 全丢（黑洞，旧版默认） |
@@ -1182,13 +1166,13 @@ timeBeginPeriod(1) 之后        最小步进 15 ms   出现的步进: 15 16
 **必须配 `--match dst`**。默认的 `--match src` 配 outbound 匹配的是**接收方**发出去的
 40 字节 ACK，上传数据本身（源端口是随机临时端口、目的端口才是服务端口）**一个字节都没管到**。
 
-**与 `tc tbf` 对照的当前状态**（v2.0.4 已补齐前五项）：
+**与 `tc tbf` 对照的 v2.0.4 历史状态**（后续版本另有修正）：
 
 | `tc tbf` 语义 | 我们 |
 |---|---|
 | 纯整形器，即使有包可发也空转以保证不超速率 | ✅ |
 | `burst` 最小值 = `rate / HZ` | ✅ `rate/100`（HZ=100，巧合一致）|
-| `burst` 必须装得下满 MTU 的包 | ✅ v2.0.2 改成按**实际包长**自适应 |
+| `burst` 必须装得下满 MTU 的包 | v2.0.2 曾按实际包长扩桶；v2.0.5 改为超桶包的缺额等待 |
 | `limit = rate × latency + burst` | ✅ v2.0.4 |
 | `mpu`（最小包单位） | ✅ v2.0.4（默认 0，与 tc 一致；`--mpu` 可设 64）|
 | `peakrate`（第二级桶限制瞬时突发） | ⬜ 未实现（本工具用不到）|

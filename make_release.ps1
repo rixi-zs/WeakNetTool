@@ -69,7 +69,7 @@ if (Test-Path $pkgDir) {
         Write-Host '处理办法（任选其一）：' -ForegroundColor Yellow
         Write-Host '  1) 注销 / 重启电脑后重新打包（最省事）；' -ForegroundColor Yellow
         Write-Host '  2) 管理员执行： sc stop WinDivert  然后重新打包；' -ForegroundColor Yellow
-        Write-Host '  3) 换一个发布版本号（例如把 kToolVersion 改成 1.2.5），避开被占用的目录。' -ForegroundColor Yellow
+        Write-Host '  3) 如果确需另发新版本，先统一更新 kToolVersion、CMake 和发布说明。' -ForegroundColor Yellow
         throw "release 目录被占用的文件无法覆盖（多数是 WinDivert 驱动仍在使用该目录）"
     }
     Remove-Item $pkgDir -Recurse -Force -ErrorAction SilentlyContinue

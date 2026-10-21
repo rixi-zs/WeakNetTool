@@ -1,4 +1,4 @@
-# WeakNetTool public source snapshot
+# WeakNetTool 2.0.11 source release
 
 This directory is a standalone, source-only Git repository with new history. It does not inherit the historical local repository's commits or author metadata. It contains no WinDivert precompiled DLL, driver, import library, sample executable, or generated WeakNetTool binary. The historical local repository and its binaries remain unchanged.
 
@@ -18,4 +18,4 @@ ctest --test-dir build --output-on-failure
 
 `make_release.bat` invokes `make_release.ps1`, which first runs `build.bat Release`. It therefore needs the same external `WINDIVERT_ROOT`; it then copies the built executables and the SDK DLL/driver from `build/` into a zip, along with this project's MIT `LICENSE`, the WinDivert license and README, and `THIRD_PARTY_NOTICES.md`. The script does not download or authenticate the SDK. Its binary output must remain private until the precompiled dependencies and applicable LGPL source-delivery requirements are verified.
 
-`RELEASE_NOTES.md` in this snapshot has one historical user-directory path redacted. The source files are otherwise copied from the local working tree. No claim is made that the original Git history has been sanitized.
+This repository has independent public-source history. Historical release notes describe earlier versions and do not represent fresh runtime validation of this source archive. The original local Git history has not been rewritten or published here.
