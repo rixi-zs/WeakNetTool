@@ -4,7 +4,10 @@
 
 # Historical snapshots and packaged releases are retained on disk.
 /backup/
-/release/
+# Keep source-release archives and checksums visible to Git for review.
+/release/*
+!/release/WeakNetTool-*-source*.zip
+!/release/WeakNetTool-*-source*.zip.sha256
 /新建文件夹/
 /新建文件夹.zip
 
@@ -36,8 +39,10 @@
 /CMakeCache.txt
 /Testing/
 *.obj
+*.o
 *.pdb
 *.ilk
+*.pch
 *.exe
 *.dll
 *.sys

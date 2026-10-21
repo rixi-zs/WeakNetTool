@@ -1428,26 +1428,26 @@ case WM_HOTKEY:
 物理内存与提交量、本进程句柄数、**同名进程实例列表**、WinDivert 服务状态，
 以及**服务注册的驱动路径**（如果它指向别的目录会明确警告 —— 见下）。
 
-样例（这是真机跑出来的，能直接看出问题）：
+样例（取自当时的真机日志；文件路径已替换为通用示例）：
 
 ```
-准备打开 WinDivert 句柄：第 1 次尝试，exe=C:\Users\x\...\build\WeakNetTool.exe
+准备打开 WinDivert 句柄：第 1 次尝试，exe=C:\test\build\WeakNetTool.exe
 WinDivertOpen 失败：错误码=1450 过滤器="inbound"
   内存: 物理 23776 MB / 可用 3021 MB；提交 36064 MB / 上限 131072 MB（负载 91%）
   本进程句柄数: 70
   ⚠ 当前有 3 个本程序实例在运行 —— 重复启动会累积内核资源，把多余的全部关掉再试
   WinDivert 服务: state=4（4=RUNNING） exitCode=0
-  WinDivert 驱动路径（服务注册）: \??\C:\Users\x\...\WeakNetTool-1.2.4-win64\WinDivert64.sys
+  WinDivert 驱动路径（服务注册）: \??\C:\test\WeakNetTool-1.2.4-win64\WinDivert64.sys
   ⚠ 驱动已从**另一个目录**注册/加载（本程序在 ...\build）。如果之前把程序解压到别处
      运行过，请重启电脑后只用一份，否则旧驱动会一直占着资源。
 ```
 
 ### 附：实机 1450 日志分析结论
 
-收到一份用户日志（1.2.4）：
+收到一份用户日志（1.2.4；文件路径已替换为通用示例）：
 
 ```
-[16:28:41] 调试日志：C:\Users\<redacted>\Downloads\WeakNetTool-1.2.4-win64\WeakNetTool-1.2.4-win64\weaknet_debug.log
+[16:28:41] 调试日志：C:\test\WeakNetTool-1.2.4-win64\weaknet_debug.log
 [16:28:41] 断网快捷键已生效：Alt+K
 [16:28:41] 联网快捷键已生效：K
 [16:29:11] [错误] 打开 WinDivert 句柄失败。（错误码 1450）
