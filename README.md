@@ -21,7 +21,7 @@ $env:WINDIVERT_ROOT = 'D:\sdk\WinDivert-2.2.2-A'  # 改成实际解压路径
 ctest --test-dir build --output-on-failure        # 需要 CTest 在 PATH 中
 ```
 
-`build.bat` 会读取 `WINDIVERT_ROOT`，不会自动下载 SDK。`make_release.bat` / `make_release.ps1` 也依赖同一 SDK：脚本先构建，再从 `build/` 复制 WinDivert DLL、驱动和程序 EXE，并附带项目 MIT 许可证、WinDivert 许可文本与第三方说明。**在预编译依赖的来源、哈希及许可证交付要求复核完成前，不要公开发布该二进制压缩包。**
+`build.bat` 会读取 `WINDIVERT_ROOT`，不会自动下载 SDK。
 
 ---
 
@@ -203,5 +203,4 @@ WeakNetTool.exe --port 8080 --dry-run
 
 ---
 
-> 想了解原理、实现细节、完整参数表和逐条测试记录？见 **[DESIGN.md](DESIGN.md)**（完整版）。
-> 想看每个版本改了什么？见 **[RELEASE_NOTES.md](RELEASE_NOTES.md)**。
+> 版本说明和可运行的便携包见 [GitHub Releases](https://github.com/rixi-zs/WeakNetTool/releases)。
